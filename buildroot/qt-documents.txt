@@ -1,0 +1,142 @@
+1) 登录系统
+用户名：root
+密码: 123456
+
+2)关机、重启
+关机指令: poweroff
+重启指令: reboot
+
+3)开机自动执行qttest测试程序说明
+此程序由/etc/init.d/S99qttest脚本启动，程序路径为/usr/share/demo/qttest
+
+4)外部sd卡
+备注：外部sd卡设备节点为/dev/mmcblock1p1,依插入外部sd卡的分区情况，一般仅存在一个分区，设备节点为/dev/mmcblock0p1
+挂载指令: mount -t vfat /dev/mmcblock1p1 /mnt
+
+5)RJ45网口
+默认配置为自动获取ip及dns，设备号为eth0
+
+6)USB host
+直接插入U盘，通过mount指令挂载
+
+7)背光调节：
+设备节点：/sys/devices/platform/pwm-backlight/backlight/pwm-backlight/brightness
+取值范围：0～255 （0代表最暗，255代表最亮）
+示例半亮命令：echo 128 > /sys/devices/platform/pwm-backlight/backlight/pwm-backlight/brightness
+
+8)按键驱动
+备注：
+I: Bus=0019 Vendor=0001 Product=0002 Version=0100
+N: Name="Nexell Keypad"
+P: Phys=nexell/input0
+S: Sysfs=/devices/platform/nxp-keypad/input/input0
+U: Uniq=
+H: Handlers=event0 
+B: PROP=0
+B: EV=13
+B: KEY=40000800 1c0000 0 0 0
+B: MSC=10
+注册为标准input设备
+
+9)红外驱动
+备注：
+I: Bus=0000 Vendor=0000 Product=0000 Version=0000
+N: Name="MCE IR Keyboard/Mouse (nxp-ppm)"
+P: Phys=/input0
+S: Sysfs=/devices/virtual/input/input3
+U: Uniq=
+H: Handlers=sysrq mouse0 event3 
+B: PROP=0
+B: EV=100017
+B: KEY=30000 0 7 ff87207a c14057ff febeffdf ffefffff ffffffff fffffffe
+B: REL=3
+B: MSC=10
+注册为标准input设备
+
+10)LED驱动
+设备节点: 
+		/sys/devices/platform/leds-gpio/leds/led1/brightness
+        /sys/devices/platform/leds-gpio/leds/led2/brightness
+		/sys/devices/platform/leds-gpio/leds/led3/brightness
+		/sys/devices/platform/leds-gpio/leds/led4/brightness
+取值范围：0 / 1 （0代表灭，1代表亮）
+LED1亮灯命令：echo 1 > /sys/devices/platform/leds-gpio/leds/led1/brightness
+LED1灭灯命令：echo 0 > /sys/devices/platform/leds-gpio/leds/led1/brightness
+
+11)电池电量
+设备节点:
+外部电源:/sys/devices/platform/i2c-gpio.3/i2c-3/3-0034/axp22-supplyer.19/power_supply/battery/present
+电池电压:/sys/devices/platform/i2c-gpio.3/i2c-3/3-0034/axp22-supplyer.19/power_supply/battery/voltage_now
+电池电流:/sys/devices/platform/i2c-gpio.3/i2c-3/3-0034/axp22-supplyer.19/power_supply/battery/current_now
+电池电量百分比:/sys/devices/platform/i2c-gpio.3/i2c-3/3-0034/axp22-supplyer.19/power_supply/battery/capacity
+
+12)四路串口
+设备结点:/dev/ttySAC0,/dev/ttySAC1,/dev/ttySAC2,/dev/ttySAC3
+
+14)休眠唤醒
+设备节点：/sys/power/state
+命令行操作休眠：echo on > /sys/power/state; echo mem > /sys/power/state; sleep 2; echo on > /sys/power/state;
+唤醒：直接按power键即可唤醒设备
+核心代码：
+void Widget::delay(unsigned int ms)
+{
+    QTime dieTime = QTime::currentTime().addMSecs(ms);
+    while( QTime::currentTime() < dieTime )
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+}
+
+void Widget::goToDeepSleep()
+{
+    char buffer[20];
+    int bytes;
+    int fd;
+
+    fd = open("/sys/power/state", O_RDWR);
+    if(fd >= 0)
+    {
+        /* on */
+        bytes = sprintf(buffer, "%s\n", "on");
+        write(fd, buffer, bytes);
+
+        /* mem */
+        bytes = sprintf(buffer, "%s\n", "mem");
+        write(fd, buffer, bytes);
+
+        /* wait a moment */
+        delay(3000);
+
+        /* on */
+        bytes = sprintf(buffer, "%s\n", "on");
+        write(fd, buffer, bytes);
+
+        ::close(fd);
+    }
+    else
+    {
+        printf("Can not deep sleep\n");
+    }
+}
+
+15)编译系统
+直接运行./build.sh脚本，可以选择-b参数，在release目录下将会生成qt-rootfs.img文件
+
+16)构建qt creator运行环境
+1、创建kits，在Build & Run选项下Kits标签，手动添加QT5.4.1(System),配置如下：
+	Name:Qt 5.4.1 (System)
+	Device type:Generic Linux Device
+	Device:Generic Linux Device
+	Sysroot:/home/zr/gec6818/s5p6818/x6818_lollipop/buildroot/output/host
+	Compiler:arm-cortex_a9-linux-gnueabi-gcc
+	Debugger:arm-cortex_a9-linux-gnueabi-gdb
+	Qt version:Qt 5.4.1 (System)
+2、Qt Version标签，手动添加
+	Qt 5.4.1 (System)
+	home/zr/gec6818/s5p6818/x6818_lollipop/buildroot/output/host/usr/bin/qmake
+3、Compiler标签，手动添加GCC
+	arm-cortex_a9-linux-gnueabi-gcc
+	/home/zr/gec6818/s5p6818/x6818_lollipop/buildroot/output/host/opt/ext-toolchain/bin/arm-cortex_a9-linux-gnueabi-gcc
+3、Debugger标签，手动添加GDB
+	arm-cortex_a9-linux-gnueabi-gdb
+	/home/zr/gec6818/s5p6818/x6818_lollipop/buildroot/output/host/opt/ext-toolchain/bin/arm-cortex_a9-linux-gnueabi-gdb
+4、设置完成后，确认kits标签各个选项是否配置正确。
+

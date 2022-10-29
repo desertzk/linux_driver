@@ -1,0 +1,1 @@
+cmd_/home/z/linux_driver/6818GEC/my_driver/demo_drv.ko := ld -r -m elf_x86_64  --build-id=sha1  -T scripts/module.lds -o /home/z/linux_driver/6818GEC/my_driver/demo_drv.ko /home/z/linux_driver/6818GEC/my_driver/demo_drv.o /home/z/linux_driver/6818GEC/my_driver/demo_drv.mod.o;  true

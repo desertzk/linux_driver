@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# Start the qttest....
+#
+
+export QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/qt/plugins/platforms
+export QT_QPA_PLATFORM=linuxfb:fb=/dev/fb0
+export QT_QPA_FONTDIR=/usr/share/fonts
+export QT_QPA_GENERIC_PLUGINS=evdevkeyboard,evdevmouse,evdevtouch
+
+case "$1" in
+  start)
+ 	echo "Starting qttest..."
+	/usr/share/demo/qttest &
+	;;
+  stop)
+	echo -n "Stopping qttest..."
+	;;
+  restart|reload)
+	"$0" stop
+	"$0" start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?
+

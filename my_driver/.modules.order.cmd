@@ -1,0 +1,1 @@
+cmd_/home/z/linux_driver/6818GEC/my_driver/modules.order := {   echo /home/z/linux_driver/6818GEC/my_driver/demo_drv.ko; :; } | awk '!x[$$0]++' - > /home/z/linux_driver/6818GEC/my_driver/modules.order
