@@ -1608,22 +1608,24 @@ struct block_device_operations;
 
 struct file_operations {
 	struct module *owner;
-	loff_t (*llseek) (struct file *, loff_t, int);
+	loff_t (*llseek) (struct file *, loff_t, int);//改变文件的读写位置
 	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
 	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
-	ssize_t (*aio_read) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
-	ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
+	ssize_t (*aio_read) (struct kiocb *, const struct iovec *, unsigned long, loff_t);//异步读
+	ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);//异步写
 	int (*readdir) (struct file *, void *, filldir_t);
 	unsigned int (*poll) (struct file *, struct poll_table_struct *);
 	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
 	long (*compat_ioctl) (struct file *, unsigned int, unsigned long);
+	//将设备内存映射到进程内存空间中 frame buffer设备中如果定义了mmap则可直接在应用程序中进行对应的frame buffer read write
+	//不需要做用户到内核的内存拷贝
 	int (*mmap) (struct file *, struct vm_area_struct *);
-	int (*open) (struct inode *, struct file *);
-	int (*flush) (struct file *, fl_owner_t id);
-	int (*release) (struct inode *, struct file *);
-	int (*fsync) (struct file *, loff_t, loff_t, int datasync);
-	int (*aio_fsync) (struct kiocb *, int datasync);
-	int (*fasync) (int, struct file *, int);
+	int (*open) (struct inode *, struct file *);// insmod
+	int (*flush) (struct file *, fl_owner_t id);//刷新
+	int (*release) (struct inode *, struct file *);//释放 rmmod使用
+	int (*fsync) (struct file *, loff_t, loff_t, int datasync);//文件同步
+	int (*aio_fsync) (struct kiocb *, int datasync);//文件异步同步
+	int (*fasync) (int, struct file *, int); //文件快速同步
 	int (*lock) (struct file *, int, struct file_lock *);
 	ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
 	unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);

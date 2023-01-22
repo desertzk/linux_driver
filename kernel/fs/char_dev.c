@@ -278,7 +278,7 @@ int __register_chrdev(unsigned int major, unsigned int baseminor,
 		goto out2;
 
 	cdev->owner = fops->owner;
-	cdev->ops = fops;
+	cdev->ops = fops;  //把驱动里我们自己写的fops里对应的函数放进来
 	kobject_set_name(&cdev->kobj, "%s", name);
 
 	err = cdev_add(cdev, MKDEV(cd->major, baseminor), count);
