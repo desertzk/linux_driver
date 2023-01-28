@@ -44,7 +44,7 @@ ssize_t led_write(struct file *file, const char __user *buf, size_t len, loff_t 
 
 }
 
-ssize_t led_read(struct file *file, char __user *buf, size_t len, loff_t *offset)
+static ssize_t led_read(struct file *file, char __user *buf, size_t len, loff_t *offset)
 {
 	char kbuf[5]={'1','2','2'};
 
@@ -158,6 +158,7 @@ static void __exit demo_cleanup(void)
 {
 	printk("Good Bye, World! leaving kernel space...\n");
 	cdev_del(&led_cdev);
+	
 	unregister_chrdev_region(led_dev_num,1);
 	
 }
