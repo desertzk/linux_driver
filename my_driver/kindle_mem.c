@@ -3,6 +3,7 @@
 #include <linux/init.h>
 #include<linux/cdev.h>
 #include<linux/fs.h>
+#include<linux/slab.h>
 
 #define MEM_MINORCNT 4
 #define KINDLEMEM_SIZE 1024
@@ -14,18 +15,11 @@ static int major;
 struct KINDLEMEM{
 	struct cdev cdev;
 	unsigned char mem[KINDLEMEM_SIZE];
-}KINDLEMEM_STRU;
-
-struct KINDLEMEM_STRU *kindlemem_devp;
-
-static struct file_operations kindlemem_fops={
-	.owner = THIS_MODULE,
-	.open = kindlemem_open,
-	.release = kindlemem_release,
-	.write = kindlemem_write,
-	.read = kindlemem_read,
-	.unlocked_ioctl = loctl_kindlemem
 };
+
+struct KINDLEMEM *kindlemem_devp;
+
+
 
 static int kindlemem_release(struct inode *inode, struct file *file)
 {
@@ -46,13 +40,14 @@ static int kindlemem_open(struct inode *inode, struct file *file)
 
 static inline loff_t llseek(struct file *file, off_t offset,int origin)
 {
-loff_t ret =0;
+	loff_t ret =0;
+	return ret;
 }
 
 
 static ssize_t kindlemem_read(struct file *file, char __user *buf, size_t len, loff_t *offset)
 {
-	struct KINDLEMEM_STRU *TPdev=file->private_data;
+	struct KINDLEMEM *TPdev=file->private_data;
 		int rt=0;
 	
 	if(buf == NULL)
@@ -63,17 +58,17 @@ static ssize_t kindlemem_read(struct file *file, char __user *buf, size_t len, l
 		
 	
 	
-	if(len > sizeof (TPdev->mem))
-	{
-		printk("[led_read]len==%d\n",len);
-		return -EINVAL;		//学会返回错误码：参数非法
+	// if(len > sizeof (TPdev->mem))
+	// {
+	// 	printk("[led_read]len==%d\n",len);
+	// 	return -EINVAL;		//学会返回错误码：参数非法
 		
-	}
+	// }
 			
 	//内核空间向用户空间拷贝数据
 	if(rt = copy_to_user(buf, TPdev->mem+*offset, len))
 	{
-		ret= -EFAULT;
+		rt= -EFAULT;
 	}else{
 		//获取成功拷贝的字节数
 		len = len - rt;	
@@ -86,19 +81,19 @@ static ssize_t kindlemem_read(struct file *file, char __user *buf, size_t len, l
 }
 
 
-static ssize_t kindlemem_write(struct file *file, char __user *userbuf, size_t count, loff_t *offset)
+static ssize_t kindlemem_write(struct file *file, const char __user *userbuf, size_t count, loff_t *off)
 {
 	unsigned long pos=*off;
 	int ret=0;
-	struct KINDLEMEM_STRU *TPdev=file->private_data;
+	struct KINDLEMEM *TPdev=file->private_data;
 
-	if(copy_from_user(TPdev->mem)+pos,userbuf,count)
+	if(copy_from_user((TPdev->mem)+pos,userbuf,count))
 	{
 		ret= -EFAULT;
 	}else{
-		*off+=size;
-		ret=size;
-		printk(KERN_INFO"write size is %lu bytes from %lu \n",size,*off);
+		*off+=count;
+		ret=count;
+		printk(KERN_INFO"write size is %lu bytes from %lu \n",count,*off);
 	}
 	return ret;
 }
@@ -106,11 +101,11 @@ static ssize_t kindlemem_write(struct file *file, char __user *userbuf, size_t c
 static long loctl_kindlemem(struct file *file, unsigned int cmd, unsigned long arg)
 {
 //获得设置好的文件私有数据
-struct KINDLEMEM_STRU* TPdev = file- >private_data;
+struct KINDLEMEM* TPdev = file->private_data;
 switch ( cmd )
 	{
 	case KINDLE_MEM_CLEAR:
-		memset( TPdev- >mem,o,KINDLEMEM_SIZE);
+		memset( TPdev->mem,0,KINDLEMEM_SIZE);
 		printk(KERN_INFO "Kindlemem is set to ioctl clear to zero\n");
 		break;
 	default:
@@ -121,14 +116,23 @@ return 0;
 }
 
 
+static struct file_operations kindlemem_fops={
+	.owner = THIS_MODULE,
+	.open = kindlemem_open,
+	.release = kindlemem_release,
+	.write = kindlemem_write,
+	.read = kindlemem_read,
+	.unlocked_ioctl = loctl_kindlemem
+};
 
-void setup_kindlemem_cdev(struct kindlemem_dev *dev,int minor)
+
+void setup_kindlemem_cdev(struct KINDLEMEM *dev,int minor)
 {
 	int error;
 	dev_t devno= MKDEV(major,minor);
 	cdev_init(&dev->cdev,&kindlemem_fops);
 	dev->cdev.owner=THIS_MODULE;
-	error=cdev_add(&dev->cdev,dev_t,1);
+	error=cdev_add(&dev->cdev,devno,1);
     if(error<0)
 	{
 		printk("cdev_add error %d",error);
@@ -147,13 +151,13 @@ static int __init Init_Kindlemem(void)
         ret=register_chrdev_region(devno,MEM_MINORCNT,"kindlemem");
 
     }else{
-		ret=alloc_chrdev_region(&devno,0,MEM_MINORCNT,"kindlemem"); //走了这个应该就不用mknod了 这个函数会在/dev/下新建kindlemem
+		ret=alloc_chrdev_region(&devno,0,MEM_MINORCNT,"kindlemem"); 
 		major=MAJOR(devno);
 	}
 	if(ret<0)
-		goto fail;
+		printk("register_chrdev_region failed\n");
 
-	kindlemem_devp=kzalloc(sizeof(struct KINDLEMEM_STRU),GFP_KERNEL);
+	kindlemem_devp=kzalloc(sizeof(struct KINDLEMEM),GFP_KERNEL);
 	if(!kindlemem_devp)
 	{
 		ret=-1;
