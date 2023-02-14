@@ -25,6 +25,8 @@ int led_close(struct inode *inode, struct file *file)
 
 ssize_t led_write(struct file *file, const char __user *buf, size_t len, loff_t *offset)
 {
+	//kbuf[0]:指定哪个led灯，7~10
+	//kbuf[1]:指定对应灯的亮灭，1：点亮；0：熄灭
 	char kbuf[64]={0};
 	int rt=0;
 	if(buf==NULL)
@@ -36,9 +38,49 @@ ssize_t led_write(struct file *file, const char __user *buf, size_t len, loff_t 
 	//将用户空间buf数据拷贝给内核空间的kbuf
 	//返回没有被拷贝成功的字节数
 	rt=copy_from_user(kbuf,buf,len);
+	switch(kbuf[0])
+	{
+		case 7:
+		{		
+			if(kbuf[1])
+			{
+				//点灯
+				v = ioread32(gpioe_out_va);
+				v &=~(1<<13);
+				iowrite32(v,gpioe_out_va);				
+				
+			}
+				
+			else
+			{
+				//灭灯
+				v = ioread32(gpioe_out_va);
+				v |=1<<13;
+				iowrite32(v,gpioe_out_va);				
+				
+			}
+				
+		}break;
+		
+		case 8:
+		{	
+
+		}break;
+		
+		
+		default:break;
+	}
+	
+	//获取成功拷贝的字节数
+	//应用传递了32字节,len=32
+	//没有被拷贝成功有10字节，rt=10
+	//成功拷贝的字节数 = len - rt = 22
 	len = len - rt;
+	
 	printk("kbuf[%s]\n",kbuf);
 	printk("len[%d]\n",len);	
+	
+	return len;
 	
 	return len;
 
@@ -69,6 +111,8 @@ static ssize_t led_read(struct file *file, char __user *buf, size_t len, loff_t 
 	rt = copy_to_user(buf, kbuf, 5);
 		//获取成功拷贝的字节数
 	len = len - rt;	
+
+	
 	
 	return len;
 }
@@ -141,9 +185,47 @@ static int __init demo_init(void)
 		goto err_device_create;		
     }	
 
+		//申请io内存
+	//GPIOE13，以0xC001E000作为起始地址，连续申请0x24字节，申请成功在iomem文件显示"gpioe"
+	led_res=request_mem_region(0xC001E000,0x24,"gpioe");
+	
+	if(led_res == NULL)
+	{
+		rt = -ENOMEM;
+		
+		goto err_request_mem_region;
+		
+		
+	}
+
+	//将物理地址映射（转换）为虚拟地址
+	gpioe_va = ioremap(0xC001E000,0x24);
+	if(gpioe_va == NULL)
+	{
+		rt = -ENOMEM;
+		
+		goto err_ioremap;
+		
+		
+	}
+
+	printk("gpioe_va = %p \n",gpioe_va);
+	
+	//得到相应寄存器的虚拟地址
+	gpioe_out_va = gpioe_va+0x00;
+	gpioe_outenb_va = gpioe_va+0x04;	
+	gpioe_altfn0_va = gpioe_va+0x20;
+
 	return 0;
 err_device_create:	
 	class_destroy(led_dev_class);
+
+err_class_create:
+	iounmap(gpioe_va);
+	
+err_ioremap:
+	//释放io内存
+	release_mem_region(0xC001E000,0x24);
 	
 err_class_create:
 	cdev_del(&led_cdev);	
