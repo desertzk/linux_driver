@@ -4,6 +4,7 @@
 #include<linux/cdev.h>
 #include<linux/fs.h>
 #include<linux/slab.h>
+#include<linux/mutex.h>
 
 #define MEM_MINORCNT 4
 #define KINDLEMEM_SIZE 1024
@@ -15,15 +16,22 @@ static int major;
 struct KINDLEMEM{
 	struct cdev cdev;
 	unsigned char mem[KINDLEMEM_SIZE];
+	spinlock_t kindlemem_spin_lock;
+	//rwlock_t kindlemem_rwlock;
+	struct mutex kindlemem_mutex;
 };
 
 struct KINDLEMEM *kindlemem_devp;
 
-
+static int kindlemem_open_count=0;
 
 static int kindlemem_release(struct inode *inode, struct file *file)
 {
 	printk("kindlemem release\n");
+	struct KINDLEMEM *devp = container_of(inode->i_cdev,struct KINDLEMEM,cdev);
+	spin_lock_irqsave(devp->kindlemem_spin_lock,flags);
+	kindlemem_open_count--;
+	spin_unlock_irqrestore(devp->kindlemem_spin_lock,flags);
 	return 0;
 }
 
@@ -33,6 +41,14 @@ static int kindlemem_open(struct inode *inode, struct file *file)
 	printk("kindlemem open\n");
 	//获取当前对应结构体成员的结构体指针
 	struct KINDLEMEM *devp = container_of(inode->i_cdev,struct KINDLEMEM,cdev);
+	spin_lock_irqsave(&devp->kindlemem_spin_lock,flags);
+	if(kindlemem_open_count)
+	{
+		spin_unlock_irqrestore(devp->kindlemem_spin_lock,flags);
+		return -EBUSY
+	}
+	devp->kindlemem_spin_lock++;
+	spin_unlock_irqrestore(&devp->kindlemem_spin_lock,flags);
 	file->private_data=devp;
 	//file->private_data=kindlemem_devp;
 	return 0;
@@ -58,14 +74,15 @@ static ssize_t kindlemem_read(struct file *file, char __user *buf, size_t len, l
 		
 	
 	
-	// if(len > sizeof (TPdev->mem))
-	// {
-	// 	printk("[led_read]len==%d\n",len);
-	// 	return -EINVAL;		//学会返回错误码：参数非法
-		
-	// }
-			
-	//内核空间向用户空间拷贝数据
+	if(len > sizeof (TPdev->mem))
+	{
+		printk("[led_read]len==%d\n",len);
+		return -EINVAL;		//学会返回错误码：参数非法	
+	}
+
+	//read_lock(&TPdev->kindlemem_rwlock);	不能用 spin lock系列不能存在上下文切换
+	mutex_lock(&TPdev->kindlemem_mutex);
+	//内核空间向用户空间拷贝数据  
 	if(rt = copy_to_user(buf, TPdev->mem+*offset, len))
 	{
 		rt= -EFAULT;
@@ -74,7 +91,8 @@ static ssize_t kindlemem_read(struct file *file, char __user *buf, size_t len, l
 		len = len - rt;	
 		printk(KERN_INFO"read size is %lu bytes from %lu \n",len,*offset);
 	}
-
+	mutex_unlock(&TPdev->kindlemem_mutex);
+	//read_unlock(&TPdev->kindlemem_rwlock);
 	
 	return len;
 
@@ -86,7 +104,10 @@ static ssize_t kindlemem_write(struct file *file, const char __user *userbuf, si
 	unsigned long pos=*off;
 	int ret=0;
 	struct KINDLEMEM *TPdev=file->private_data;
+	unsigned int flags;
 
+	//write_lock_irqsave(&TPdev->rwlock, flags);  不能用 spin lock系列不能存在上下文切换
+	mutex_lock(&TPdev->kindlemem_mutex);
 	if(copy_from_user((TPdev->mem)+pos,userbuf,count))
 	{
 		ret= -EFAULT;
@@ -95,6 +116,8 @@ static ssize_t kindlemem_write(struct file *file, const char __user *userbuf, si
 		ret=count;
 		printk(KERN_INFO"write size is %lu bytes from %lu \n",count,*off);
 	}
+	mutex_unlock(&TPdev->kindlemem_mutex);
+	//write_unlock_irqrestore(&TPdev->rwlock, flags);
 	return ret;
 }
 
@@ -163,7 +186,34 @@ static int __init Init_Kindlemem(void)
 		ret=-1;
 		goto err_cdev_add;
 	}
+	//spin_lock_init(&devp->kindlemem_spin_lock);
+	mutex_init(&devp->kindlemem_mutex);
+	//rwlock_init(&devp->kindlemem_rwlock);
 	setup_kindlemem_cdev(kindlemem_devp,0);
+
+	//自动创建设备类，若创建成功，则在/sys/class目录下创建kindmem文件夹 cat /proc/devices 也会多出新建的
+	led_dev_class=class_create(THIS_MODULE,"kindlemem");
+	if(IS_ERR(led_dev_class))
+	{
+		//将错误码指针转换为错误码
+		ret = PTR_ERR(led_dev_class);
+		
+		goto err_class_create;
+		
+	}
+	
+	//会在/sys/class/myled目录下去创建myled设备
+	//会包含主设备号、次设备号、设备文件名
+	//自动去/dev目录下创建zkkindlemem设备文件（设备节点）
+	led_dev_device = device_create(led_dev_class,NULL,led_dev_num,NULL,"zkkindlemem");
+	if (IS_ERR(led_dev_device))
+    {
+		//将错误码指针转换为错误码
+		ret = PTR_ERR(led_dev_device);
+		
+		goto err_device_create;		
+    }
+
 	return ret;
 err_cdev_add:
 	unregister_chrdev_region(devno,MEM_MINORCNT);
