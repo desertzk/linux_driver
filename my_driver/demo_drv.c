@@ -5,12 +5,18 @@
 #include<linux/fs.h>
 #include <linux/io.h>
 #include <linux/device.h>
-
+#include <linux/uaccess.h>
 
 //定义一个led字符设备
 static struct cdev led_cdev;
 //定义一个led设备号
+
 dev_t led_dev_num;
+
+static void __iomem *gpioe_va=NULL;
+static void __iomem *gpioe_out_va=NULL;
+static void __iomem *gpioe_outenb_va=NULL;
+static void __iomem *gpioe_altfn0_va=NULL;
 
 static struct class  *led_dev_class;
 static struct device *led_dev_device;
@@ -192,11 +198,11 @@ static int __init demo_init(void)
 
 		//申请io内存
 	//GPIOE13，以0xC001E000作为起始地址，连续申请0x24字节，申请成功在iomem文件显示"gpioe"
-	led_res=request_mem_region(0xC001E000,0x24,"gpioe");
+	ret=request_mem_region(0xC001E000,0x24,"gpioe");
 	
-	if(led_res == NULL)
+	if(ret == NULL)
 	{
-		rt = -ENOMEM;
+		ret = -ENOMEM;
 		
 		goto err_request_mem_region;
 		
@@ -207,7 +213,7 @@ static int __init demo_init(void)
 	gpioe_va = ioremap(0xC001E000,0x24);
 	if(gpioe_va == NULL)
 	{
-		rt = -ENOMEM;
+		ret = -ENOMEM;
 		
 		goto err_ioremap;
 		
@@ -222,16 +228,24 @@ static int __init demo_init(void)
 	gpioe_altfn0_va = gpioe_va+0x20;
 
 	return 0;
-err_device_create:	
-	class_destroy(led_dev_class);
-	
+
+
+
+
 err_ioremap:
 	//释放io内存
 	release_mem_region(0xC001E000,0x24);
+
+err_request_mem_region:
+	device_destroy(led_dev_class,led_dev_num);
+
+err_device_create:	
+	class_destroy(led_dev_class);
 	
 err_class_create:
 	cdev_del(&led_cdev);	
-	iounmap(gpioe_va);
+
+
 err_cdev_add:
 	unregister_chrdev_region(led_dev_num,1);
 	
