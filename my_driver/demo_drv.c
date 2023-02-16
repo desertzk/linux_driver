@@ -3,6 +3,10 @@
 #include <linux/init.h>
 #include<linux/cdev.h>
 #include<linux/fs.h>
+#include <linux/io.h>
+#include <linux/device.h>
+
+
 //定义一个led字符设备
 static struct cdev led_cdev;
 //定义一个led设备号
@@ -38,6 +42,7 @@ ssize_t led_write(struct file *file, const char __user *buf, size_t len, loff_t 
 	//将用户空间buf数据拷贝给内核空间的kbuf
 	//返回没有被拷贝成功的字节数
 	rt=copy_from_user(kbuf,buf,len);
+	unsigned int v=0;
 	switch(kbuf[0])
 	{
 		case 7:
@@ -219,9 +224,6 @@ static int __init demo_init(void)
 	return 0;
 err_device_create:	
 	class_destroy(led_dev_class);
-
-err_class_create:
-	iounmap(gpioe_va);
 	
 err_ioremap:
 	//释放io内存
@@ -229,6 +231,7 @@ err_ioremap:
 	
 err_class_create:
 	cdev_del(&led_cdev);	
+	iounmap(gpioe_va);
 err_cdev_add:
 	unregister_chrdev_region(led_dev_num,1);
 	
