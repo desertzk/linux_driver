@@ -48,18 +48,20 @@ ssize_t led_write(struct file *file, const char __user *buf, size_t len, loff_t 
 	//将用户空间buf数据拷贝给内核空间的kbuf
 	//返回没有被拷贝成功的字节数
 	rt=copy_from_user(kbuf,buf,len);
+	printk("kbuf[%s]\n",kbuf);
+	printk("len[%d]\n",len);	
 	unsigned int v=0;
 	switch(kbuf[0])
 	{
-		case 7:
+		case '1':
 		{		
-			if(kbuf[1])
+			if(kbuf[1]=='1')
 			{
 				//点灯
 				v = ioread32(gpioe_out_va);
 				v &=~(1<<13);
 				iowrite32(v,gpioe_out_va);				
-				
+				printk("led on %x %p\n",v,gpioe_out_va);
 			}
 				
 			else
@@ -68,7 +70,7 @@ ssize_t led_write(struct file *file, const char __user *buf, size_t len, loff_t 
 				v = ioread32(gpioe_out_va);
 				v |=1<<13;
 				iowrite32(v,gpioe_out_va);				
-				
+				printk("led off %x %p\n",v,gpioe_out_va);
 			}
 				
 		}break;
@@ -88,8 +90,7 @@ ssize_t led_write(struct file *file, const char __user *buf, size_t len, loff_t 
 	//成功拷贝的字节数 = len - rt = 22
 	len = len - rt;
 	
-	printk("kbuf[%s]\n",kbuf);
-	printk("len[%d]\n",len);	
+
 	
 	return len;
 	
@@ -155,7 +156,7 @@ static int __init demo_init(void)
 		goto err_register_chrdev_region;
 	}
 #else
-	//动态分配设备号
+	//动态分配设备号 如果设备号有效则在/proc/devices文件中可以找到myled
 	ret = alloc_chrdev_region(&led_dev_num,0,1,"myled");
 	if(ret<0)
 	{
@@ -173,7 +174,7 @@ static int __init demo_init(void)
 		goto err_cdev_add;
 	}
 
-	//自动创建设备类，若创建成功，则在/sys/class目录下创建myled文件夹
+	//自动创建设备类，若创建成功，则在/sys/class目录下创建myled文件夹   
 	led_dev_class=class_create(THIS_MODULE,"zkled");
 	if(IS_ERR(led_dev_class))
 	{
@@ -184,7 +185,7 @@ static int __init demo_init(void)
 		
 	}
 	
-	//会在/sys/class/myled目录下去创建myled设备
+	//会在/sys/class/zkled目录下去创建zkleddevice设备
 	//会包含主设备号、次设备号、设备文件名
 	//自动去/dev目录下创建zkleddevice设备文件（设备节点）
 	led_dev_device = device_create(led_dev_class,NULL,led_dev_num,NULL,"zkleddevice");
@@ -197,7 +198,7 @@ static int __init demo_init(void)
     }	
 
 		//申请io内存
-	//GPIOE13，以0xC001E000作为起始地址，连续申请0x24字节，申请成功在iomem文件显示"gpioe"
+	//GPIOE13，以0xC001E000作为起始地址，连续申请0x24字节，申请成功在iomem文件显示"gpioe"  cat /proc/iomem
 	ret=request_mem_region(0xC001E000,0x24,"gpioe");
 	
 	if(ret == NULL)
@@ -256,6 +257,9 @@ err_register_chrdev_region:
 static void __exit demo_cleanup(void)
 {
 	printk("Good Bye, World! leaving kernel space...\n");
+release_mem_region(0xC001E000,0x24);
+device_destroy(led_dev_class,led_dev_num);
+class_destroy(led_dev_class);
 	cdev_del(&led_cdev);
 	
 	unregister_chrdev_region(led_dev_num,1);

@@ -4,17 +4,17 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-
+//arm-linux-gnueabi-gcc test.c -o test
 int main(int argc,char **argv)
 {
 	int fd = 0;
 	int len=0;
-	char buf[]="This is app test by teacher.wen";
+	char buf[]="11";
 	char tmp[64]={0};
 	
 	//1.打开myled设备
 	
-	fd = open("/dev/myled",O_RDWR);
+	fd = open("/dev/zkleddevice",O_RDWR);
 	
 	if(fd < 0)
 	{
