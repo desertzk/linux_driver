@@ -26,37 +26,56 @@ int main(int argc,char **argv)
 	}
 	
 	sleep(3);
-	
-	//向myled设备写入数据
-	len = write(fd,buf,strlen(buf));
-	
-	if( len > 0)
+	while(1)
 	{
-		printf("[test][write]len = %d\n",len);
+		//向myled设备写入数据
+		len = write(fd,buf,strlen(buf));
 		
-	}
-	else
-	{
-		perror("write");
+		if( len > 0)
+		{
+			printf("[test][write]len = %d\n",len);
+			
+		}
+		else
+		{
+			perror("write");
+			
+		}
 		
+		sleep(3);	
+		
+		//从myled设备读取数据
+		len = read(fd,tmp,5);
+		
+		if( len > 0)
+		{
+			printf("[test][read]tmp = %s\n",tmp);		
+			printf("[test][read]len = %d\n",len);
+			
+		}
+		else
+		{
+			perror("read");
+			
+		}
+
+
+				//向myled设备写入数据
+		len = write(fd,"12",strlen("12"));
+		
+		if( len > 0)
+		{
+			printf("[test][write]len = %d\n",len);
+			
+		}
+		else
+		{
+			perror("write");
+			
+		}
+		sleep(3);
 	}
 	
-	sleep(3);	
-	
-	//从myled设备读取数据
-	len = read(fd,tmp,5);
-	
-	if( len > 0)
-	{
-		printf("[test][read]tmp = %s\n",tmp);		
-		printf("[test][read]len = %d\n",len);
-		
-	}
-	else
-	{
-		perror("read");
-		
-	}
 	
 	sleep(3);		
 	
