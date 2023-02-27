@@ -1,9 +1,11 @@
-obj-m := demo_drv.o
-CURRENT_PATH := $(shell pwd)
-LINUX_KERNEL := $(shell uname -r)
-LINUX_KERNEL_PATH := /usr/src/linux-headers-$(LINUX_KERNEL)
+obj-m+=led_drv.o
+obj-m+=key_drv.o
+KERNEL_DIR:=../kernel
+CROSS_COMPILE:=../prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin/arm-eabi-
+PWD:=$(shell pwd)
 
-all:
-	make -C $(LINUX_KERNEL_PATH) M=$(CURRENT_PATH) modules
+default:
+	$(MAKE) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) -C $(KERNEL_DIR) M=$(PWD) modules
+	
 clean:
-	make -C $(LINUX_KERNEL_PATH) M=$(CURRENT_PATH) clean
+	rm  *.o *.order .*.cmd  *.mod.c *.symvers .tmp_versions -rf
