@@ -141,22 +141,24 @@ static ssize_t key_read(struct file *file, char __user *buf, size_t len, loff_t 
 		return -EINVAL;		//学会返回错误码：参数非法
 	}
 		
-	if(file->f_flag & O_NONBLOCK && !key_press_flag) // open in non block mode
+	if(file->f_flags & O_NONBLOCK && !key_press_flag) // open in non block mode
 	{
 		return -EAGAIN;
 	}
 //在需要等待(没有数据)的时候，进行休眠
+	printk("block read");
 	wait_event_interruptible(key_wq,key_press_flag); 
+	printk("have data can read now");
 	
-	if(len > sizeof (kbuf))
+/*	if(len > sizeof (buf))
 	{
 		printk("[key_read]len==%d\n",len);
 		return -EINVAL;		//学会返回错误码：参数非法
 		
-	}
+	}*/
 			
 	//内核空间向用户空间拷贝数据
-	rt = copy_to_user(buf, key_val, len);
+	rt = copy_to_user(buf, &key_val, sizeof(key_val));
 	key_press_flag=0;
 		//获取成功拷贝的字节数
 	len = len - rt;	

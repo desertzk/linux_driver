@@ -1,11 +1,4 @@
-#
-# Normal rules
-#
-*~
-
-#
-# Top-level generic files
-#
-/out
-/out/*
-
+*.o
+*.cmd
+*.order
+*.builtin

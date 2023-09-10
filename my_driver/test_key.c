@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <poll.h>
+#include <signal.h>
 
 #define CMD_KEY_ALL		_IOR('K',0,unsigned int)
 
@@ -47,10 +49,10 @@ int main(int argc,char **argv)
 
 	struct pollfd pfd[2];
 	pfd[0].fd = fd;  //key device
-	pfd[0].event = POLLIN;
+	pfd[0].events = POLLIN;
 
 	pfd[1].fd = 0;  //stdin
-	pfd[1].event = POLLIN;
+	pfd[1].events = POLLIN;
 
 
 
@@ -67,7 +69,7 @@ int main(int argc,char **argv)
 		// at least one fd can read
 		for(int i=0;i<2;i++)
 		{
-			if(pfd[i].revent & POLLIN)
+			if(pfd[i].revents & POLLIN)
 			{
 				len = read(fd,tmp,5);
 		
