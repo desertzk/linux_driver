@@ -29,10 +29,70 @@ int main(int argc,char **argv)
 		return -1;
 		
 	}
+
+		len = read(fd,tmp,5); //block read 
+		
+		if( len > 0)
+		{
+			printf("[test][read]tmp = %s\n",tmp);		
+			printf("[test][read]len = %d\n",len);
+			
+		}
+		else
+		{
+			perror("read");
+			
+		}
+
+
+	struct pollfd pfd[2];
+	pfd[0].fd = fd;  //key device
+	pfd[0].event = POLLIN;
+
+	pfd[1].fd = 0;  //stdin
+	pfd[1].event = POLLIN;
+
+
+
 	
 	sleep(3);
 	while(1)
 	{
+
+
+	int ret = poll(pfd,2,-1);
+	printf("poll ret %d\n",ret);
+	if(ret > 0)
+	{
+		// at least one fd can read
+		for(int i=0;i<2;i++)
+		{
+			if(pfd[i].revent & POLLIN)
+			{
+				len = read(fd,tmp,5);
+		
+				if( len > 0)
+				{
+					printf("[test][read]tmp = %s\n",tmp);		
+					printf("[test][read]len = %d\n",len);
+					
+				}
+				else
+				{
+					perror("read");
+					
+				}
+			}
+		}
+		
+	}else{
+		perror("poll ");
+		
+		return -1;
+	}
+
+
+
 		int rt=ioctl(fd,CMD_KEY_ALL,&key_val);
 		printf("key_val %d\n",key_val);
 		if(rt < 0)
