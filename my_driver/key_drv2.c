@@ -33,6 +33,7 @@ static struct class  *key_dev_class;
 static struct device *key_dev_device;
 static struct fasync_struct *fasync;
 static struct tasklet_struct mytasklet;
+static struct work_struct mywork;
 
 
 
@@ -143,9 +144,7 @@ ssize_t key_write(struct file *file, const char __user *buf, size_t len, loff_t 
 
 static ssize_t key_read(struct file *file, char __user *buf, size_t len, loff_t *offset)
 {
-	
-
-		int rt=0;
+	int rt=0;
 	
 	if(buf == NULL)
 	{
@@ -272,6 +271,13 @@ void tasklet_bottom_half(unsigned long data)
 		kill_fasync(&fasync,SIGIO,POLLIN);
 }
 
+void work_bottom_half(unsigned long data)
+{
+	printk("work_bottom_half called\n");
+
+
+}
+
 //irq top half
 irqreturn_t key_irq_handler(int irq_num, void *dev){
     //printk("key_irq_handler irq_num %d %x\n",irq_num,*gpioa_pad_va);
@@ -396,8 +402,9 @@ static int __init mykey_init(void)
 
 	tasklet_init(&mytasklet,tasklet_bottom_half,45);
 
-	return 0;
+	INIT_WORK(&mywork,work_bottom_half);
 
+	return 0;
 
 
 
