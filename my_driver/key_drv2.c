@@ -13,6 +13,13 @@
 
 #define CMD_KEY_ALL _IOR('K',0,unsigned int)
 
+
+struct key_event{
+	int code;
+	int value;
+}
+
+
 //定义一个key字符设备
 static struct cdev key_cdev;
 //定义一个key设备号
@@ -22,6 +29,12 @@ static dev_t key_dev_num;
 static unsigned int key_press_flag=0;
 static unsigned int key_val=0;
 static wait_queue_head_t key_wq;
+static struct class  *key_dev_class;
+static struct device *key_dev_device;
+static struct fasync_struct *fasync;
+static struct tasklet_struct mytasklet;
+
+
 
 //K2 gpioa28
 static void __iomem *gpioa_va=NULL;
@@ -32,8 +45,7 @@ static void __iomem *gpioa_altfn0_va=NULL;
 static void __iomem *gpioa_altfn1_va=NULL;    // input op '00'
 
 
-static struct class  *key_dev_class;
-static struct device *key_dev_device;
+
 
 static int key_open(struct inode *inode, struct file *file)
 {
@@ -238,13 +250,29 @@ static struct file_operations key_fops={
 	.read = key_read,
     .unlocked_ioctl	= key_ioctl,
 	.poll = key_drv_poll,
+	.fasync = key_drv_fasync,
 };
 
 
+int key_drv_fasync(int fd, struct file *filp, int on)
+{
+	//只需要调用一个函数记录信号该发送给谁
+	return fasync_helper(fd, filp, on, &fasync);
+}
 
+void tasklet_bottom_half(unsigned long data)
+{
+	printk("tasklet_bottom_half called\n");
+		//唤醒等待队列且条件成立
+		wake_up(&key_wq);
+		
+		key_press_flag=1;
 
+		//send signal to userspace
+		kill_fasync(&fasync,SIGIO,POLLIN);
+}
 
-
+//irq top half
 irqreturn_t key_irq_handler(int irq_num, void *dev){
     //printk("key_irq_handler irq_num %d %x\n",irq_num,*gpioa_pad_va);
 	//gpioa_pad_va bit 28 press 0 release 1
@@ -255,11 +283,9 @@ irqreturn_t key_irq_handler(int irq_num, void *dev){
     //若有按键按下
 	if(key_val)
 	{
-		//唤醒等待队列且条件成立
-		wake_up(&key_wq);
-		
-		key_press_flag=1;
-		
+		//start bottom half
+		tasklet_schedule(&mytasklet);
+		printk("start bottom half \n");
 	}
 
     return IRQ_HANDLED;
@@ -368,7 +394,7 @@ static int __init mykey_init(void)
 
     init_waitqueue_head(&key_wq);
 
-
+	tasklet_init(&mytasklet,tasklet_bottom_half,45);
 
 	return 0;
 
@@ -399,7 +425,7 @@ err_register_chrdev_region:
 static void __exit mykey_cleanup(void)
 {
 	printk("Good Bye, World! leaving kernel space...\n");
-
+	tasklet_kill(&mytasklet);
     free_irq(IRQ_GPIO_A_START+28,NULL);
 		//解除内存映射
 	iounmap(gpioa_va);
