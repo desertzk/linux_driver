@@ -17,7 +17,7 @@
 struct key_event{
 	int code;
 	int value;
-}
+};
 
 
 //定义一个key字符设备
@@ -240,6 +240,11 @@ static long key_ioctl(struct file *file,
 	
 }
 
+int key_drv_fasync(int fd, struct file *filp, int on)
+{
+	//只需要调用一个函数记录信号该发送给谁
+	return fasync_helper(fd, filp, on, &fasync);
+}
 
 static struct file_operations key_fops={
 	.owner = THIS_MODULE,
@@ -253,11 +258,7 @@ static struct file_operations key_fops={
 };
 
 
-int key_drv_fasync(int fd, struct file *filp, int on)
-{
-	//只需要调用一个函数记录信号该发送给谁
-	return fasync_helper(fd, filp, on, &fasync);
-}
+
 
 void tasklet_bottom_half(unsigned long data)
 {
@@ -291,6 +292,8 @@ irqreturn_t key_irq_handler(int irq_num, void *dev){
 	{
 		//start bottom half
 		tasklet_schedule(&mytasklet);
+
+		schedule_work(&mywork);
 		printk("start bottom half \n");
 	}
 
