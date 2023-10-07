@@ -1,9 +1,10 @@
 #include <linux/init.h>
-#include <Linux/module.h>
+#include <linux/module.h>
 #include <linux/kernel.h>
-#include <Linux/sched.h>
-#include <Linux/mm.h>
+#include <linux/sched.h>
+#include <linux/mm.h>
 #include <linux/moduleparam.h>
+#include<linux/sched/signal.h>
 
 static int pid_mem = 1;
 module_param(pid_mem, int, S_IRUGO);
@@ -19,10 +20,10 @@ static void print_mem(struct task_struct *task)
     for (vma = mm->mmap; vma; vma = vma->vm_next)
     {
         printk("\nVma number %d:\n", ++count);
-        printk(" Starts at θxLx,Ends at ox%lx\n", vma->vm_start, vma->vm_end);
+        printk(" Starts at θxlx,Ends at ox%lx\n", vma->vm_start, vma->vm_end);
     }
 
-    pr_info("\nCode Segment start = 0x%Lx,end = 0x%Lx \n"
+    pr_info("\nCode Segment start = 0x%lx,end = 0x%lx \n"
     "Data Segment start = 0x%lx,end = 0x%lx\n"
     "Stack Segment start ox%lx\n",mm->start_code, mm->end_code,mm->start_data, mm->end_data,mm->start_stack);
 
