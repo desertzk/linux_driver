@@ -20,7 +20,11 @@ static void print_mem(struct task_struct *task)
     for (vma = mm->mmap; vma; vma = vma->vm_next)
     {
         printk("\nVma number %d:\n", ++count);
-        printk(" Starts at θxlx,Ends at ox%lx\n", vma->vm_start, vma->vm_end);
+	struct file *vmfile = vma ->vm_file;
+	if(vmfile)
+        	printk(" Starts at θx%lx,Ends at ox%lx flag %lx  file %s\n", vma->vm_start, vma->vm_end,vma->vm_flags ,vmfile->f_path.dentry->d_name.name);
+	else
+        	printk(" Starts at θx%lx,Ends at ox%lx flag %lx  file %s\n", vma->vm_start, vma->vm_end,vma->vm_flags ,"null");
     }
 
     pr_info("\nCode Segment start = 0x%lx,end = 0x%lx \n"
