@@ -18,8 +18,15 @@ struct student *p;
 void stu_ctor(void *p)
 {
 }
-
 //init objects here
+//
+
+
+
+void *q;
+void *vp;
+
+
 static int __init hello_init(void){
 	p =kmalloc(sizeof(struct student),GFP_KERNEL);
 	printk("p=%llx\n",p);
@@ -43,12 +50,61 @@ static int __init hello_init(void){
 
 
     printk(KERN_INFO "Kernel Stack (current): 0x%lx\n", (unsigned long)current);
+
+
+
+
+
+
+    unsigned int phys_addr;
+    unsigned int pfn;
+    int i;
+    vp=vmalloc(5*1024*1024);
+    printk("sizeof vp %x",sizeof(vp));
+    if(!vp){
+	    printk("vmalloc failed\n");
+	    return -ENOMEM;
+    }else{
+	    for(i=0;i<100;i++){
+		    vp=vp+4096;//test:change 1024 to 4096 8192…
+		    pfn =vmalloc_to_pfn(vp);
+		    phys_addr =(pfn<<12)|((unsigned long)vp &0xfff);
+		    printk("virt_addr:%lx pfn:%x   phys_addr:%x\n",
+				    (unsigned long)vp,pfn,phys_addr);
+	    }
+    }
+    printk("…-----------------------------------------------------------------\n");
+    q=kmalloc(4*1024*1024,GFP_KERNEL);
+    printk("sizeof q %x",sizeof(q));
+    if(!q){
+	    printk("knalloc failed\n");return -ENOMEM;
+    }else{
+	    for(i=0;i<100;i++){
+		    q=q+4096;
+		    phys_addr =virt_to_phys(q);
+		    pfn =(unsigned long)phys_addr >>12;
+		    printk("virt_addr =%lx  pfn=%x    physaddr =%lx\n",
+				    (unsigned long)q,pfn,phys_addr);
+	    }
+    }
+
+
+
+
+
+
+
+
+
 	return 0;
 
 }
 
 static void __exit hello_exit(void){
 	kfree(p);
+	if(q)
+		kfree(q);
+	vfree(vp);
 }
 
 
