@@ -110,6 +110,7 @@ static int hello_mmap(struct file *file,struct vm_area_struct *vma)
 		printk("map size too large,max size is ox%x\n",MAX_SIZE);
 		return -EINVAL;
 	}
+	// map va to physical page
 	ret =remap_pfn_range(vma,vma->vm_start,pfn,size,vma->vm_page_prot);
 	if(ret)
 	{
