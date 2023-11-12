@@ -1,0 +1,3 @@
+[submodule "submodule_name"]
+    path = fmem
+    url = https://github.com/NateBrune/fmem
