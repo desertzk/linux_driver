@@ -1,3 +1,6 @@
 [submodule "my_driver/my_driver/fmem"]
 	path = my_driver/my_driver/fmem
 	url = https://github.com/NateBrune/fmem
+[submodule "my_driver/fmem"]
+	path = my_driver/fmem
+	url = https://github.com/NateBrune/fmem.git
