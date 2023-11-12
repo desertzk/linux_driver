@@ -3,6 +3,8 @@
 #include<linux/mm.h>
 #include<linux/gfp.h>
 
+
+#define page_to_phys(page)      ((dma_addr_t)page_to_pfn(page) << PAGE_SHIFT)
 #define PAGE_ORDER 1
 struct page *page;
 unsigned long int virt_addr;
@@ -17,7 +19,7 @@ static int __init hello_init(void){
 	memcpy(virt_addr,source,strlen(source) + 1);
 	phys_addr_t paddr = page_to_phys(page);
 	printk(KERN_INFO "phys_addr  %pa\n", &paddr);
-	printk("virt_addr %s",virt_addr);
+	printk("virt_addr %s\n",virt_addr);
 	return 0;
 }
 
