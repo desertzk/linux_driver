@@ -6,6 +6,7 @@
 #include <linux/mm.h>
 #include<linux/vmalloc.h>
 #include<linux/io.h>
+#include <linux/kallsyms.h>
 
 struct student{
 	int id;
@@ -25,7 +26,6 @@ void stu_ctor(void *p)
 void *q;
 void *vp;
 
-
 static int __init hello_init(void){
 	p =kmalloc(sizeof(struct student),GFP_KERNEL);
 	printk("p=%llx\n",p);
@@ -36,18 +36,26 @@ static int __init hello_init(void){
 	printk("p phy %llx\n",virt_to_phys(p));
 
 
-	struct mm_struct init_mm = *(current->mm);
+	struct mm_struct current_mm = *(current->mm);
 	printk("phys_base %lx\n",phys_base);
 	printk("page_offset_base %lx\n",page_offset_base);
 	printk("vmalloc_base %lx\n",vmalloc_base);
 	printk("VMALLOC_START %lx\n",VMALLOC_START);
 	printk("VMALLOC_END %lx\n",VMALLOC_END);
 	printk("vmemmap_base %lx\n",vmemmap_base);
-	printk("current pid %lx\n",current->pid);
-	printk("current_mm kernel code start  %lx end %lx \n",init_mm.start_code,init_mm.end_code);
-	printk("current_mm kernel data start %lx end %lx \n",init_mm.start_data,init_mm.end_data);
 	printk("PAGE_OFFSET %lx  __START_KERNEL_map %lx  \n",PAGE_OFFSET,__START_KERNEL_map);
-	
+	printk("current pid %lx\n",current->pid);
+	printk("current_mm kernel code start  %lx end %lx \n",current_mm.start_code,current_mm.end_code);
+	printk("current_mm kernel data start %lx end %lx \n",current_mm.start_data,current_mm.end_data);
+struct mm_struct *pinit_mm=kallsyms_lookup_name("init_mm");
+
+printk("pinit_mm %lx \n",pinit_mm);
+
+struct mm_struct init_mm=*pinit_mm;
+/*phys_addr_t phys_addr;
+
+phys_addr = virt_to_phys((void *)virt_addr);*/
+	printk("init_mm kernel code start  %lx phys %lx  end %lx phys %lx \n",pinit_mm->start_code,virt_to_phys(pinit_mm->start_code),pinit_mm->end_code,virt_to_phys(pinit_mm->end_code));
 /*	    printk(KERN_INFO "Kernel Text (Code): 0x%lx - 0x%lx\n", (unsigned long)_stext, (unsigned long)_etext);
     printk(KERN_INFO "Kernel Data: 0x%lx - 0x%lx\n", (unsigned long)_sdata, (unsigned long)_edata);
     printk(KERN_INFO "Init Task: 0x%lx\n", (unsigned long)&init_task);
