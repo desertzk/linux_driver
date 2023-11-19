@@ -26,6 +26,19 @@ void stu_ctor(void *p)
 void *q;
 void *vp;
 
+unsigned long virt2phys(unsigned long virt_addr)
+{
+
+	phys_addr_t phys_addr;
+	struct page *page;
+
+	page = virt_to_page((void *)virt_addr);
+	phys_addr = page_to_phys(page) + offset_in_page(virt_addr);
+
+	printk(KERN_INFO "Virtual Address: 0x%lx, Physical Address: 0x%llx\n", virt_addr, (unsigned long long)phys_addr);
+	return phys_addr;
+}
+
 static int __init hello_init(void){
 	p =kmalloc(sizeof(struct student),GFP_KERNEL);
 	printk("p=%llx\n",p);
@@ -45,6 +58,7 @@ static int __init hello_init(void){
 	printk("vmemmap_base %lx\n",vmemmap_base);
 	printk("PAGE_OFFSET %lx  __START_KERNEL_map %lx  \n",PAGE_OFFSET,__START_KERNEL_map);
 	printk("current pid %lx\n",current->pid);
+    printk(KERN_INFO "Kernel Stack (current): 0x%lx\n", (unsigned long)current);
 	printk("current_mm kernel code start  %lx end %lx \n",current_mm.start_code,current_mm.end_code);
 	printk("current_mm kernel data start %lx end %lx \n",current_mm.start_data,current_mm.end_data);
 struct mm_struct *pinit_mm=kallsyms_lookup_name("init_mm");
@@ -56,13 +70,11 @@ struct mm_struct init_mm=*pinit_mm;
 
 phys_addr = virt_to_phys((void *)virt_addr);*/
 	printk("init_mm kernel code start  %lx phys %lx  end %lx phys %lx \n",pinit_mm->start_code,virt_to_phys(pinit_mm->start_code),pinit_mm->end_code,virt_to_phys(pinit_mm->end_code));
-/*	    printk(KERN_INFO "Kernel Text (Code): 0x%lx - 0x%lx\n", (unsigned long)_stext, (unsigned long)_etext);
-    printk(KERN_INFO "Kernel Data: 0x%lx - 0x%lx\n", (unsigned long)_sdata, (unsigned long)_edata);
-    printk(KERN_INFO "Init Task: 0x%lx\n", (unsigned long)&init_task);
-    printk(KERN_INFO "Kernel Stack (current): 0x%lx\n", (unsigned long)current);*/
+	virt2phys(pinit_mm->start_code);
+	virt2phys(pinit_mm->end_code);
 
-
-    printk(KERN_INFO "Kernel Stack (current): 0x%lx\n", (unsigned long)current);
+	printk("init_mm kernel data start  %lx phys %lx  end %lx phys %lx \n",pinit_mm->start_data,virt2phys(pinit_mm->start_data),pinit_mm->end_data,virt2phys(pinit_mm->end_data));
+	printk("init_mm kernel brk start  %lx phys %lx  end %lx phys %lx \n",pinit_mm->start_brk,virt2phys(pinit_mm->start_brk),pinit_mm->brk,virt2phys(pinit_mm->brk));
 
 
 
