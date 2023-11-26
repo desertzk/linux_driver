@@ -20,11 +20,16 @@ int main(void){
 	}
 	printf("read_buffer:%s\n",read_buf);
 	mmap_addr = mmap(NULL,4096,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
-	printf("mmap read:%s\n",mmap_addr);
-	memcpy(mmap_addr,"hello,zhaixue.cc!\n",20);
-		read(fd,read_buf,100);
-	printf("read_buffer:%s\n",read_buf);
+	printf("mmap mmap_addr %lx read:%s\n",mmap_addr,mmap_addr);
+	memcpy(mmap_addr,"hello,dududu.cc!\n",20);
+	read(fd,read_buf,100);
+	printf("read_buffer addr %lx read_buffer:%s\n",read_buf,read_buf);
 printf("mmap read:%s\n",mmap_addr);
+while(1)
+{
+	sleep(1);
+}
+
 	munmap(mmap_addr,4096);
 	return 0;
 }

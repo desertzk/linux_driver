@@ -7,6 +7,8 @@
 #include<linux/mutex.h>
 #include<linux/gfp.h>
 #include<linux/mm.h>
+#include<linux/io.h>
+
 
 #define MEM_MINORCNT 4
 #define KINDLEMEM_SIZE 1024
@@ -40,6 +42,90 @@ dev_t led_dev_num;
 static struct cdev led_cdev;
 
 
+static int  page_content(unsigned long pfn)
+{
+    struct page *page;
+    
+    int i = 0;
+
+    // Get the page structure for the given PFN
+    page = pfn_to_page(pfn);
+
+    // Read the content of the physical frame
+    pr_info("Content of Physical Frame %lu:\n", pfn);
+    unsigned char *data = page_address(page);
+    printk("Page content in hex:\n");
+
+    for (i = 0; i < PAGE_SIZE; ) {
+        if (i % 16 == 0)
+            printk("\n");
+
+        printk("i %d   %02x %02x %02x %02x  %02x %02x %02x %02x",i, data[i++],data[i++],data[i++],data[i++]
+		,data[i++],data[i++],data[i++],data[i++]);
+    }
+
+    printk("\n");
+
+
+    return 0;
+}
+
+
+void print_page_tables(struct mm_struct *mm,unsigned long addr) {
+    pgd_t *pgd;
+	p4d_t *p4d;
+    pud_t *pud;
+    pmd_t *pmd;
+    pte_t *pte;
+    
+//(pgd + pgd_index(address));
+    pgd = pgd_offset(mm, addr);
+	printk("(mm)->pgd 0x%lx *pgd 0x%lx pgd_index %lx",pgd,*pgd,pgd_index(addr));
+	/*
+	if (!pgtable_l5_enabled())
+		return (p4d_t *)pgd;
+	return (p4d_t *)pgd_page_vaddr(*pgd) + p4d_index(address);
+	*/
+	p4d = p4d_offset(pgd, addr);
+	if (p4d_none(*p4d) || p4d_bad(*p4d))
+		return;
+printk("p4d 0x%lx *pgd 0x%lx pgd_page_vaddr(*pgd) 0x%lx p4d_index %lx",p4d,*pgd,pgd_page_vaddr(*pgd),p4d_index(addr));
+	
+	
+	//p4d_pgtable(*p4d) + pud_index(address);
+	pud = pud_offset(p4d, addr);
+	if (pud_none(*pud) || pud_bad(*pud))
+		return;
+printk("pud 0x%lx *p4d 0x%lx p4d_pgtable(*p4d) 0x%lx p4d_index %lx",pud,*p4d,p4d_pgtable(*p4d),pud_index(addr));
+
+	//pud_pgtable(*pud) + pmd_index(address);
+	pmd = pmd_offset(pud, addr);
+	if (pmd_none(*pmd) || pmd_bad(*pmd))
+		return;
+printk("pmd 0x%lx *pud 0x%lx pud_pgtable(*pud) 0x%lx pmd_index %lx",pmd,*pud,pud_pgtable(*pud),pmd_index(addr));
+
+//return (pte_t *)pmd_page_vaddr(*pmd) + pte_index(address);
+	pte = pte_offset_map(pmd, addr);
+	if (pte_none(*pte))
+		return;
+printk("pte 0x%lx *pmd 0x%lx pmd_page_vaddr(*pmd) 0x%lx pte_index %lx",pte,*pmd,pmd_page_vaddr(*pmd),pte_index(addr));
+
+/*
+	phys_addr_t pfn = pte_val(pte);
+	pfn ^= protnone_mask(pfn);
+	return (pfn & PTE_PFN_MASK) >> PAGE_SHIFT;
+*/
+	unsigned long pfn = pte_pfn(*pte);
+
+	printk("Virtual Address: 0x%lx,pgd_val %lx p4d_val %lx pud_val %lx pmd_val %lx PTE Value: 0x%lx pfn 0x%lx\n"
+	, addr,pgd_val(*pgd),p4d_val(*p4d),pud_val(*pud),pmd_val(*pmd), pte_val(*pte),pfn);
+
+
+	page_content(pfn);
+
+	pte_unmap(pte);
+    //}
+}
 
 static int hello_open(struct inode *inode,struct file *file)
 {
@@ -77,9 +163,12 @@ static ssize_t kindlemem_read(struct file *file,char __user *buf,size_t count,lo
 	len =PAGE_SIZE-*ppos;
 	if(count>len)
 		count =len;
+
+	printk("kindle read bufaddr %lx\n",buf);
 	ret =copy_to_user(buf,hello_buf +*ppos,count);
 	printk("kindle read %d\n",ret);
-	virt2phys(buf);
+	//virt2phys(buf);
+	print_page_tables(current->mm,buf);
 	virt2phys(hello_buf);
 	if(ret)
 		return -EFAULT;
@@ -128,9 +217,10 @@ struct vm_operations_struct hello_vm_ops ={
 	.fault = hello_fault
 };
 
-static int hello_mmap(struct file *file,struct vm_area_struct *vmap)
+static int hello_mmap(struct file *file,struct vm_area_struct *vma)
 {
-	vmap->vm_ops= &hello_vm_ops;
+	printk("hello_mmap call vma start %lx vma end %lx \n",vma->vm_start,vma->vm_end);
+	vma->vm_ops= &hello_vm_ops;
 	return 0;
 }
 
