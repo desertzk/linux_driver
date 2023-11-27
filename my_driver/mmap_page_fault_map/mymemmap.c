@@ -41,6 +41,8 @@ static struct device *led_dev_device;
 dev_t led_dev_num;
 static struct cdev led_cdev;
 
+#define phys_to_pfn(p) ((p) >> PAGE_SHIFT)
+
 
 static int  page_content(unsigned long pfn)
 {
@@ -71,6 +73,93 @@ static int  page_content(unsigned long pfn)
 }
 
 
+static int  get_phys_content(unsigned long phys_addr)
+{
+    struct page *page;
+    
+    int i = 0;
+    unsigned long pfn = phys_to_pfn(phys_addr);
+    // Get the page structure for the given PFN
+    page = pfn_to_page(pfn);
+
+    // Read the content of the physical frame
+    pr_info("Content of Physical Frame %lu:\n", pfn);
+
+	unsigned long offset = (phys_addr & ~PAGE_MASK);
+
+    unsigned char *data = page_address(page)+offset;
+    printk("Page content in hex:\n");
+
+
+
+        printk("%02x %02x %02x %02x  %02x %02x %02x %02x", data[i++],data[i++],data[i++],data[i++]
+		,data[i++],data[i++],data[i++],data[i++]);
+
+
+printk("Page content in string %s\n",data);
+
+
+    return 0;
+}
+
+
+
+// Function to convert user space virtual address to physical address
+unsigned long virt_to_phys_pgt(unsigned long virt_addr) {
+    pgd_t *pgd;
+		p4d_t *p4d;
+    pud_t *pud;
+    pmd_t *pmd;
+    pte_t *pte;
+    struct page *page;
+    unsigned long phys_addr = 0;
+
+    // Get the current process's page global directory
+    pgd = pgd_offset(current->mm, virt_addr);
+
+    if (pgd_none(*pgd) || pgd_bad(*pgd)) {
+        printk(KERN_ALERT "Error: PGD entry not found.\n");
+        return 0;
+    }
+
+	p4d = p4d_offset(pgd, virt_addr);
+	if (p4d_none(*p4d) || p4d_bad(*p4d))
+		return 0;
+    // Get the page upper directory
+    pud = pud_offset(p4d, virt_addr);
+
+    if (pud_none(*pud) || pud_bad(*pud)) {
+        printk(KERN_ALERT "Error: PUD entry not found.\n");
+        return 0;
+    }
+
+    // Get the page middle directory
+    pmd = pmd_offset(pud, virt_addr);
+
+    if (pmd_none(*pmd) || pmd_bad(*pmd)) {
+        printk(KERN_ALERT "Error: PMD entry not found.\n");
+        return 0;
+    }
+
+    // Get the page table entry
+    pte = pte_offset_map(pmd, virt_addr);
+
+    if (!pte || pte_none(*pte)) {
+        printk(KERN_ALERT "Error: PTE entry not found.\n");
+        return 0;
+    }
+
+    // Get the physical address from the page table entry
+    page = pte_page(*pte);
+    phys_addr = page_to_phys(page) + (virt_addr & ~PAGE_MASK);
+printk("Physical Address: 0x%lx",phys_addr);
+    pte_unmap(pte);
+
+    return phys_addr;
+}
+
+
+
 void print_page_tables(struct mm_struct *mm,unsigned long addr) {
     pgd_t *pgd;
 	p4d_t *p4d;
@@ -80,7 +169,7 @@ void print_page_tables(struct mm_struct *mm,unsigned long addr) {
     
 //(pgd + pgd_index(address));
     pgd = pgd_offset(mm, addr);
-	printk("(mm)->pgd 0x%lx *pgd 0x%lx pgd_index %lx",pgd,*pgd,pgd_index(addr));
+	printk("(mm)->pgd 0x%x *pgd 0x%x pgd_index %x",pgd,*pgd,pgd_index(addr));
 	/*
 	if (!pgtable_l5_enabled())
 		return (p4d_t *)pgd;
@@ -89,26 +178,26 @@ void print_page_tables(struct mm_struct *mm,unsigned long addr) {
 	p4d = p4d_offset(pgd, addr);
 	if (p4d_none(*p4d) || p4d_bad(*p4d))
 		return;
-printk("p4d 0x%lx *pgd 0x%lx pgd_page_vaddr(*pgd) 0x%lx p4d_index %lx",p4d,*pgd,pgd_page_vaddr(*pgd),p4d_index(addr));
+printk("p4d 0x%x *pgd 0x%x pgd_page_vaddr(*pgd) 0x%x p4d_index %x",p4d,*pgd,pgd_page_vaddr(*pgd),p4d_index(addr));
 	
 	
 	//p4d_pgtable(*p4d) + pud_index(address);
 	pud = pud_offset(p4d, addr);
 	if (pud_none(*pud) || pud_bad(*pud))
 		return;
-printk("pud 0x%lx *p4d 0x%lx p4d_pgtable(*p4d) 0x%lx p4d_index %lx",pud,*p4d,p4d_pgtable(*p4d),pud_index(addr));
+printk("pud 0x%x *p4d 0x%x p4d_pgtable(*p4d) 0x%x p4d_index %x",pud,*p4d,p4d_pgtable(*p4d),pud_index(addr));
 
 	//pud_pgtable(*pud) + pmd_index(address);
 	pmd = pmd_offset(pud, addr);
 	if (pmd_none(*pmd) || pmd_bad(*pmd))
 		return;
-printk("pmd 0x%lx *pud 0x%lx pud_pgtable(*pud) 0x%lx pmd_index %lx",pmd,*pud,pud_pgtable(*pud),pmd_index(addr));
+printk("pmd 0x%x *pud 0x%x pud_pgtable(*pud) 0x%x pmd_index %x",pmd,*pud,pud_pgtable(*pud),pmd_index(addr));
 
 //return (pte_t *)pmd_page_vaddr(*pmd) + pte_index(address);
 	pte = pte_offset_map(pmd, addr);
 	if (pte_none(*pte))
 		return;
-printk("pte 0x%lx *pmd 0x%lx pmd_page_vaddr(*pmd) 0x%lx pte_index %lx",pte,*pmd,pmd_page_vaddr(*pmd),pte_index(addr));
+printk("pte 0x%x *pmd 0x%x pmd_page_vaddr(*pmd) 0x%x pte_index %x",pte,*pmd,pmd_page_vaddr(*pmd),pte_index(addr));
 
 /*
 	phys_addr_t pfn = pte_val(pte);
@@ -169,6 +258,8 @@ static ssize_t kindlemem_read(struct file *file,char __user *buf,size_t count,lo
 	printk("kindle read %d\n",ret);
 	//virt2phys(buf);
 	print_page_tables(current->mm,buf);
+	unsigned long phys=virt_to_phys_pgt(buf);
+get_phys_content(phys);
 	virt2phys(hello_buf);
 	if(ret)
 		return -EFAULT;
