@@ -14,7 +14,6 @@ void threadfunc1()
     if(policy==SCHED_OTHER)
     printf("SCHED_OTHER.\n");
     if(policy==SCHED_RR)
-    ;
     printf("SCHED_RR 1.\n");
     if(policy==SCHED_FIFO)
     printf("SCHED_FIFO.\n");
@@ -40,7 +39,6 @@ void threadfunc2()
     if(policy==SCHED_OTHER)
     printf("SCHED_OTHER.\n");
     if(policy==SCHED_RR)
-    ;
     printf("SCHED_RR 1.\n");
     if(policy==SCHED_FIFO)
     printf("SCHED_FIFO.\n");
@@ -67,7 +65,6 @@ void threadfunc3()
     if(policy==SCHED_OTHER)
     printf("SCHED_OTHER.\n");
     if(policy==SCHED_RR)
-    ;
     printf("SCHED_RR 1.\n");
     if(policy==SCHED_FIFO)
     printf("SCHED_FIFO.\n");
@@ -103,20 +100,20 @@ int main()
     pthread_attr_init(&attr1);
     pthread_attr_init(&attr3);
 
-    param.sched_priority=51;
+    param.sched_priority=1;
 
     pthread_attr_setschedpolicy(&attr3,SCHED_RR);
     pthread_attr_setschedparam(&attr3,&param);
     pthread_attr_setinheritsched(&attr3,PTHREAD_EXPLICIT_SCHED);
 
     param.sched_priority=22;
-    pthread_attr_setschedpolicy(&attr2,SCHED_RR);
+    pthread_attr_setschedpolicy(&attr2,SCHED_FIFO);
     pthread_attr_setschedparam(&attr2,&param);
     pthread_attr_setinheritsched(&attr2,PTHREAD_EXPLICIT_SCHED);
 
-    pthread_create(&ppid3,&attr1,(void*)threadfunc3,NULL);
+    pthread_create(&ppid3,&attr3,(void*)threadfunc3,NULL);
     pthread_create(&ppid2,&attr2,(void*)threadfunc2,NULL);
-    pthread_create(&ppid1,&attr3,(void*)threadfunc1,NULL);
+    pthread_create(&ppid1,&attr1,(void*)threadfunc1,NULL);
 
     pthread_join(ppid3,NULL);
     pthread_join(ppid2,NULL);
