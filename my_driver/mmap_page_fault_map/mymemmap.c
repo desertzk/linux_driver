@@ -42,6 +42,17 @@ dev_t led_dev_num;
 static struct cdev led_cdev;
 
 #define phys_to_pfn(p) ((p) >> PAGE_SHIFT)
+static inline pud_t *p4d_pgtable(p4d_t p4d)
+{
+	return (pud_t *)__va(p4d_val(p4d) & p4d_pfn_mask(p4d));
+}
+
+
+
+static inline pmd_t *pud_pgtable(pud_t pud)
+{
+	return (pmd_t *)__va(pud_val(pud) & pud_pfn_mask(pud));
+}
 
 
 static int  page_content(unsigned long pfn)
@@ -127,7 +138,6 @@ unsigned long virt_to_phys_pgt(unsigned long virt_addr) {
 		return 0;
     // Get the page upper directory
     pud = pud_offset(p4d, virt_addr);
-
     if (pud_none(*pud) || pud_bad(*pud)) {
         printk(KERN_ALERT "Error: PUD entry not found.\n");
         return 0;
@@ -176,28 +186,31 @@ void print_page_tables(struct mm_struct *mm,unsigned long addr) {
 	return (p4d_t *)pgd_page_vaddr(*pgd) + p4d_index(address);
 	*/
 	p4d = p4d_offset(pgd, addr);
+        unsigned long p4dpfn = p4d_val(*p4d) & p4d_pfn_mask(*p4d);
 	if (p4d_none(*p4d) || p4d_bad(*p4d))
 		return;
-printk("p4d 0x%x *pgd 0x%x pgd_page_vaddr(*pgd) 0x%x p4d_index %x",p4d,*pgd,pgd_page_vaddr(*pgd),p4d_index(addr));
+printk("p4d 0x%x *pgd 0x%x pgd_page_vaddr(*pgd) 0x%lx p4dpfn 0x%x p4d_index %lx",p4d,*pgd,pgd_page_vaddr(*pgd),p4dpfn,p4d_index(addr));
 	
 	
 	//p4d_pgtable(*p4d) + pud_index(address);
 	pud = pud_offset(p4d, addr);
+        unsigned long pudpfn = pud_val(*pud) & pud_pfn_mask(*pud);
 	if (pud_none(*pud) || pud_bad(*pud))
 		return;
-printk("pud 0x%x *p4d 0x%x p4d_pgtable(*p4d) 0x%x p4d_index %x",pud,*p4d,p4d_pgtable(*p4d),pud_index(addr));
+printk("pud 0x%x *p4d 0x%x p4d_pgtable(*p4d) 0x%lx pudpfn 0x%x p4d_index %lx",pud,*p4d,p4d_pgtable(*p4d),pudpfn,pud_index(addr));
 
 	//pud_pgtable(*pud) + pmd_index(address);
 	pmd = pmd_offset(pud, addr);
+        unsigned long pmdpfn = pmd_val(*pmd) & pmd_pfn_mask(*pmd);
 	if (pmd_none(*pmd) || pmd_bad(*pmd))
 		return;
-printk("pmd 0x%x *pud 0x%x pud_pgtable(*pud) 0x%x pmd_index %x",pmd,*pud,pud_pgtable(*pud),pmd_index(addr));
+printk("pmd 0x%x *pud 0x%x pud_pgtable(*pud) 0x%lx pmdpfn  0x%x  pmd_index %lx",pmd,*pud,pud_pgtable(*pud),pmdpfn,pmd_index(addr));
 
 //return (pte_t *)pmd_page_vaddr(*pmd) + pte_index(address);
 	pte = pte_offset_map(pmd, addr);
 	if (pte_none(*pte))
 		return;
-printk("pte 0x%x *pmd 0x%x pmd_page_vaddr(*pmd) 0x%x pte_index %x",pte,*pmd,pmd_page_vaddr(*pmd),pte_index(addr));
+printk("pte 0x%x *pmd 0x%x pmd_page_vaddr(*pmd) 0x%lx  pte_index %lx",pte,*pmd,pmd_page_vaddr(*pmd), pte_index(addr));
 
 /*
 	phys_addr_t pfn = pte_val(pte);
