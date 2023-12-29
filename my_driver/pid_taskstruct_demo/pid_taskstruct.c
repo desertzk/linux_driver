@@ -2,7 +2,7 @@
 #include <linux/module.h>
 #include<linux/sched.h>
 #include<linux/delay.h>
-#include<linux/gfp.h>
+#include<linux/kthread.h>
 #include<linux/highmem.h>
 
 struct task_struct *pts_thread=NULL;
@@ -11,14 +11,14 @@ int MyFunc_ThreadFunc(void *argc){
 
 	int iData=-1;
 	printk("调用内核线程函数: MyFunc_ThreadFunc(...).\n");
-	printk("打印当前进程的pid的值为:d\n" , current->pid);
+	printk("打印当前进程的pid的值为:%d\n" , current->pid);
 	//显示父进程的状态
-	printk("初始化函数状态为:%ld\n",pts_thread->state);
+	printk("初始化函数状态为parent state:%ld\n",pts_thread->state);
 	iData=wake_up_process(pts_thread); 
 
 
 	//打印输出函数调用之后的父进程状态
-	printk("调用wake_up_process之后的函数状态为:ld\n", pts_thread->state);
+	printk("调用wake_up_process之后的函数状态为parent state:%ld\n", pts_thread->state);
 	printk("调用wake_up_process函数返回结果为:%d\n",iData);
 	printk("退出内核线程函数: MyFunc_ThreadFunc( .. .).\n");
 	return 0;
@@ -52,7 +52,7 @@ static int __init hello_init(void){
 	//等待队列元素
 	wait_queue_head_t head;
 	wait_queue_entry_t data;
-	printk("调用wakeupprocess_functest_init(...)函数. \n");//指定存储节点，创建一个新的内核线程
+	printk("调用kthread_create_on_node(...)函数. \n");//指定存储节点，创建一个新的内核线程
 	pResult=kthread_create_on_node(MyFunc_ThreadFunc,NULL,-1,cName);
 
 	printk("打印新的内核线程的PID值为:%d \n ",pResult->pid);
@@ -68,8 +68,7 @@ static int __init hello_init(void){
 	result_data=wake_up_process( current);
 	printk("唤醒当前进程为RUNNING状态之后线程结果为:%d \n" , result_data);
 	//输出time_out的值
-	printk("调用sched_tiMeout_uninterruptible( ...)函数，
-	返回的值为∶%ld\n" ,time_out) ;
+	printk("调用sched_tiMeout_uninterruptible( ...)函数返回的值为%ld\n" ,time_out);
 
 
 
