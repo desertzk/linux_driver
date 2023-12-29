@@ -17,7 +17,7 @@ static int __init hello_init(void){
 	printk("打印进程描述符的全局进程编号为:%d\n",iNr);
 	printk("打印进程描述符的当前线程组编号为:%d\n",current->tgid); 
 	// 3 : pid_task(...)
-	struct task_struct *ttask=pid_task(kernepid,PIDTYPE_PID);
+	struct task_struct *ttask=pid_task(kernelpid,PIDTYPE_PID);
 	printk("打印任务当前的状态为:%ld\n",ttask->state);
 	printk("打印任务当前的进程号为:%d\n",ttask->pid);
 	printk("打印任务当前的进程号为:%s\n",ttask->comm);
