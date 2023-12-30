@@ -38,12 +38,12 @@ int myfunc_theadtest(void *argc){
 	printk("调用内核线程函数:myfunc_theadtest(...).\n");
 	printk("打印输出当前进程的PID值为:d\n",current->pid);
 	printk("打印输出当前字段done的值为:%d\n",cp.done);
-	printk("打印输出父进程的状态:%ld\n",pthreads->state);
+	printk("打印输出父进程的状态:%ld\n",pts_thread->state);
 
 	complete_all(&cp);//调用函数唤醒进程并且更改done字段的值
 
 	printk("after complete_all打印输出当前字段done的值为:%d\n",cp.done);
-	printk("after complete_all打印输出父进程状态state的值为:%ld\n",pthreads->state);
+	printk("after complete_all打印输出父进程状态state的值为:%ld\n",pts_thread->state);
 	printk("退出内核线程函数:myfunc_theadtest(...).\n");
 	return 0;
 }
@@ -92,7 +92,7 @@ static int __init hello_init(void){
 	printk("打印新进程的nice的值为:%d\n",curinice);
 
 	//设置新进程nice的值
-	set_user_nice(pts,-20);//取值自己决定:20
+	set_user_nice(pResult,-20);//取值自己决定:20
 	printk("after set_user_nice打印新进程的静态优先级为:%d\n",pResult->static_prio);
 	printk("after set_user_nice打印新进程nice的值为:%d\n",task_nice(pResult));
 
@@ -114,14 +114,14 @@ static int __init hello_init(void){
 
 
 	struct task_struct *pts;
-	wait_queue_entry_t data;
+	wait_queue_entry_t data1;
 	long lefttime;
 	//创建一个新的进程
 	pts=kthread_create_on_node(myfunc_theadtest,NULL,-1, "complete_all_test");
 	wake_up_process(pts);//唤醒操作
 	init_completion(&cp);//初始化全局变量
-	init_wait_entry(&data, current);// 使用当前进程初始化等待队列的元素
-	add_wait_queue(&(cp.wait),&data);//使用当前进程加入到等待队列当中
+	init_wait_entry(&data1, current);// 使用当前进程初始化等待队列的元素
+	add_wait_queue(&(cp.wait),&data1);//使用当前进程加入到等待队列当中
 	//使等待队列进程不可中断的等待状态
 	lefttime=schedule_timeout_uninterruptible(10000);
 	printk("调用sched_tiMeout_uninterruptible( ...)函数返回的值为%ld\n" ,lefttime);
