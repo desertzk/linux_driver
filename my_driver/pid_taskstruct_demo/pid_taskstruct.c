@@ -54,8 +54,8 @@ int myfunc_wake_up_sync_key(void *argc){
 	printk("打印输出当前进程的PID值为:%d\n",current->pid);
 	printk("打印输出父进程state成员状态的值为:%ld\n",pts_thread->state);
 	//调用函数唤醒等待队列当中的进程
-	_wake_up_sync_key(&g_head, TASK_NEW,0,NULL);
-	printk("打印输出调用唤醒之后state成员的值为:%ld\n",pts_thread->state);
+	__wake_up_sync_key(&g_head, TASK_NEW,0,NULL);
+	printk("after __wake_up_sync_key 打印输出调用唤醒之后state成员的值为:%ld\n",pts_thread->state);
 	printk("退出内核线程函数: myfunc_wake_up_sync_key(...).\n");
 	return 0;
 }
@@ -141,7 +141,7 @@ static int __init hello_init(void){
 
 //-----------------wake_up_sync_key
 
-	//long timeout;
+	long timeout;
 	//wait_queue_entry_t data;//等待队列当中的元素
 	struct task_struct *res;//保存创建新进程的数据信息
 	printk("调用内核模块函数: wakeupsynckey_initfunc(.. .).\n");
@@ -153,8 +153,8 @@ static int __init hello_init(void){
 	add_wait_queue(&g_head ,&data);//将等待队列元素加入到等待队列当中
 	pts_thread=current;//记录当前进程的信息
 	wake_up_process(res);//唤醒新创建的线程
-	timeout=schudle_timeout_uninterruptible(12000);//让当前进程进入睡眠状态
-	printk("打印输出timeout的值为:ld\n",timeout);
+	timeout=schedule_timeout_uninterruptible(8000);//让当前进程进入睡眠状态
+	printk("打印输出timeout的值为:%ld\n",timeout);
 	printk("退出内核模块函数:wakeupsynckey_initfunc(.. .).\n");
 
 
