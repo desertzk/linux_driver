@@ -69,6 +69,10 @@ static int __init hello_init(void){
 	printk("打印新进程的静态优先级为:%d\n",current->static_prio);
 	printk("打印新进程的nice的值为:%d\n",curinice);
 
+	//设置新进程nice的值
+	set_user_nice(pts,-20);//取值自己决定:20
+	printk("after set_user_nice打印新进程的静态优先级为:%d\n",pResult->static_prio);
+	printk("after set_user_nice打印新进程nice的值为:%d\n",task_nice(pResult));
 
 
 
