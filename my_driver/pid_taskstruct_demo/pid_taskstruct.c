@@ -6,6 +6,9 @@
 #include<linux/highmem.h>
 
 struct task_struct *pts_thread=NULL;
+struct completion cp;
+
+
 int MyFunc_ThreadFunc(void *argc){
 
 
@@ -26,6 +29,25 @@ int MyFunc_ThreadFunc(void *argc){
 	printk("退出内核线程函数: MyFunc_ThreadFunc( .. .).\n");
 	return 0;
 }
+
+
+
+//自定义内核线程函数
+int myfunc_theadtest(void *argc){
+
+	printk("调用内核线程函数:myfunc_theadtest(...).\n");
+	printk("打印输出当前进程的PID值为:d\n",current->pid);
+	printk("打印输出当前字段done的值为:%d\n",cp.done);
+	printk("打印输出父进程的状态:%ld\n",pthreads->state);
+
+	complete_all(&cp);//调用函数唤醒进程并且更改done字段的值
+
+	printk("after complete_all打印输出当前字段done的值为:%d\n",cp.done);
+	printk("after complete_all打印输出父进程状态state的值为:%ld\n",pthreads->state);
+	printk("退出内核线程函数:myfunc_theadtest(...).\n");
+	return 0;
+}
+
 
 
 static int __init hello_init(void){
@@ -75,7 +97,7 @@ static int __init hello_init(void){
 	printk("after set_user_nice打印新进程nice的值为:%d\n",task_nice(pResult));
 
 
-
+	
 	init_waitqueue_head(&head);//初始化等待队列的头元素init_waitqueue_entry (&data,current);
 	add_wait_queue(&head ,&data);
 	pts_thread=current;//保存当前进程的数据信息
@@ -88,6 +110,22 @@ static int __init hello_init(void){
 	printk("唤醒当前进程为RUNNING状态之后线程结果为:%d \n" , result_data);
 	//输出time_out的值
 	printk("调用sched_tiMeout_uninterruptible( ...)函数返回的值为%ld\n" ,time_out);
+
+
+
+	struct task_struct *pts;
+	wait_queue_entry_t data;
+	long lefttime;
+	//创建一个新的进程
+	pts=kthread_create_on_node(myfunc_theadtest,NULL,-1, "complete_all_test");
+	wake_up_process(pts);//唤醒操作
+	init_completion(&cp);//初始化全局变量
+	init_wait_entry(&data, current);// 使用当前进程初始化等待队列的元素
+	add_wait_queue(&(cp.wait),&data);//使用当前进程加入到等待队列当中
+	//使等待队列进程不可中断的等待状态
+	lefttime=schedule_timeout_uninterruptible(10000);
+	printk("调用sched_tiMeout_uninterruptible( ...)函数返回的值为%ld\n" ,lefttime);
+
 
 
 
