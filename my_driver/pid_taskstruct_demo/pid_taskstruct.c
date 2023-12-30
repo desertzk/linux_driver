@@ -7,7 +7,7 @@
 
 struct task_struct *pts_thread=NULL;
 struct completion cp;
-
+wait_queue_head_t g_head;
 
 int MyFunc_ThreadFunc(void *argc){
 
@@ -36,7 +36,7 @@ int MyFunc_ThreadFunc(void *argc){
 int myfunc_theadtest(void *argc){
 
 	printk("调用内核线程函数:myfunc_theadtest(...).\n");
-	printk("打印输出当前进程的PID值为:d\n",current->pid);
+	printk("打印输出当前进程的PID值为:%d\n",current->pid);
 	printk("打印输出当前字段done的值为:%d\n",cp.done);
 	printk("打印输出父进程的状态:%ld\n",pts_thread->state);
 
@@ -48,6 +48,17 @@ int myfunc_theadtest(void *argc){
 	return 0;
 }
 
+
+int myfunc_wake_up_sync_key(void *argc){
+	printk("调用内核线程函数:myfunc_wake_up_sync_key(...).\n");
+	printk("打印输出当前进程的PID值为:%d\n",current->pid);
+	printk("打印输出父进程state成员状态的值为:%ld\n",pts_thread->state);
+	//调用函数唤醒等待队列当中的进程
+	_wake_up_sync_key(&g_head, TASK_NEW,0,NULL);
+	printk("打印输出调用唤醒之后state成员的值为:%ld\n",pts_thread->state);
+	printk("退出内核线程函数: myfunc_wake_up_sync_key(...).\n");
+	return 0;
+}
 
 
 static int __init hello_init(void){
@@ -112,7 +123,7 @@ static int __init hello_init(void){
 	printk("调用sched_tiMeout_uninterruptible( ...)函数返回的值为%ld\n" ,time_out);
 
 
-
+	//---------------completion-------------------
 	struct task_struct *pts;
 	wait_queue_entry_t data1;
 	long lefttime;
@@ -122,14 +133,33 @@ static int __init hello_init(void){
 	init_completion(&cp);//初始化全局变量
 	init_wait_entry(&data1, current);// 使用当前进程初始化等待队列的元素
 	add_wait_queue(&(cp.wait),&data1);//使用当前进程加入到等待队列当中
+	printk("调用add_wait_queue( ...)函数返回的值为\n");
 	//使等待队列进程不可中断的等待状态
 	lefttime=schedule_timeout_uninterruptible(10000);
 	printk("调用sched_tiMeout_uninterruptible( ...)函数返回的值为%ld\n" ,lefttime);
 
 
+//-----------------wake_up_sync_key
+
+	//long timeout;
+	//wait_queue_entry_t data;//等待队列当中的元素
+	struct task_struct *res;//保存创建新进程的数据信息
+	printk("调用内核模块函数: wakeupsynckey_initfunc(.. .).\n");
+	res=kthread_create_on_node(myfunc_wake_up_sync_key,NULL,-1, "wakeupsynckey_test");
+	printk("打印输出新线程的pid值为:%d\n ",res->pid);
+	printk("打印输出当前进程的pid值为:%d\n ",current->pid);
+	init_waitqueue_head(&g_head);//初始化等待队列头部元素
+	init_waitqueue_entry(&data,current);//使用当前进程初始化等待队列中的元素
+	add_wait_queue(&g_head ,&data);//将等待队列元素加入到等待队列当中
+	pts_thread=current;//记录当前进程的信息
+	wake_up_process(res);//唤醒新创建的线程
+	timeout=schudle_timeout_uninterruptible(12000);//让当前进程进入睡眠状态
+	printk("打印输出timeout的值为:ld\n",timeout);
+	printk("退出内核模块函数:wakeupsynckey_initfunc(.. .).\n");
 
 
-	printk("退出wakeupprocess_functest_init(...)函数.\n");
+
+	
 
 
 	return 0;
