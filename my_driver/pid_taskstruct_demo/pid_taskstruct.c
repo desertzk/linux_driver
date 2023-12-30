@@ -12,6 +12,9 @@ int MyFunc_ThreadFunc(void *argc){
 	int iData=-1;
 	printk("调用内核线程函数: MyFunc_ThreadFunc(...).\n");
 	printk("打印当前进程的pid的值为:%d\n" , current->pid);
+	printk("打印当前进程的静态优先级static_prio:%d\n", current->static_prio);
+	printk("打印当前进程的nice的值为:%d\n",task_nice(current));
+
 	//显示父进程的状态
 	printk("初始化函数状态为parent state:%ld\n",pts_thread->state);
 	iData=wake_up_process(pts_thread); 
@@ -56,7 +59,19 @@ static int __init hello_init(void){
 	pResult=kthread_create_on_node(MyFunc_ThreadFunc,NULL,-1,cName);
 
 	printk("打印新的内核线程的PID值为:%d \n ",pResult->pid);
+	int inice=task_nice(pResult);//获取新进程的nice的值
+	printk("打印新进程的静态优先级为:%d\n",pResult->static_prio);
+	printk("打印新进程的nice的值为:%d\n",inice);
+
+
 	printk("打印当前进程的PID值为:%d\n",current->pid);
+	int curinice=task_nice(current);
+	printk("打印新进程的静态优先级为:%d\n",current->static_prio);
+	printk("打印新进程的nice的值为:%d\n",curinice);
+
+
+
+
 	init_waitqueue_head(&head);//初始化等待队列的头元素init_waitqueue_entry (&data,current);
 	add_wait_queue(&head ,&data);
 	pts_thread=current;//保存当前进程的数据信息
